@@ -50,7 +50,7 @@ export default function InstagramFeed() {
           {projects.map((project, i) => (
             <Link
               key={project.slug}
-              href={`/projects/${project.slug}`}
+              href={`/projects/${project.slug}/gallery`}
               className="aspect-square bg-[#111] overflow-hidden group relative"
             >
               <div

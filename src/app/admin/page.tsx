@@ -77,6 +77,7 @@ export default function AdminPage() {
   const [projImgType, setProjImgType] = useState<"hero" | "gallery">("gallery");
   const [projImgUploading, setProjImgUploading] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [uploadStatuses, setUploadStatuses] = useState<string[]>([]);
   const [uploadCategory, setUploadCategory] = useState("Sports");
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadAlt, setUploadAlt] = useState("");
@@ -691,25 +692,89 @@ export default function AdminPage() {
 
                       <div className="border-t border-white/5 pt-4">
                         <label className={lblCls}>Gallery ({p.gallery?.filter((u) => !u.includes("placeholder")).length || 0} images)</label>
-                        <div className="grid grid-cols-4 gap-2 mb-3">
-                          {(p.gallery || []).map((url, i) => (
-                            <div key={i} className="relative group aspect-square bg-[#0A0A0A] bg-cover bg-center rounded overflow-hidden" style={{ backgroundImage: url && !url.includes("placeholder") ? `url(${url})` : "none" }}>
-                              {(!url || url.includes("placeholder")) && <div className="w-full h-full flex items-center justify-center text-[10px] text-[#555]">Empty</div>}
-                              <button onClick={async () => { const gal = [...(p.gallery || [])]; gal.splice(i, 1); await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, gallery: gal }) }); showMsg("Image removed"); const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []); }} className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-red-500/80 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity">&times;</button>
+
+                        <div
+                          className="border-2 border-dashed border-white/10 rounded p-4 mb-3 text-center hover:border-[#C8A96A]/50 transition-colors cursor-pointer"
+                          onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "#C8A96A"; }}
+                          onDragLeave={(e) => { e.currentTarget.style.borderColor = ""; }}
+                          onDrop={async (e) => {
+                            e.preventDefault(); e.currentTarget.style.borderColor = "";
+                            const files = Array.from(e.dataTransfer.files).filter((f) => ["image/jpeg","image/png","image/webp"].includes(f.type));
+                            if (files.length === 0) return;
+                            const gal = [...((p.gallery || []).filter((u) => !u.includes("placeholder")))];
+                            const status = [...uploadStatuses];
+                            for (let i = 0; i < files.length; i++) {
+                              status.push("uploading");
+                              setUploadStatuses([...status]);
+                              try {
+                                const fd = new FormData(); fd.append("file", files[i]); fd.append("category", "projects"); fd.append("title", p.title || ""); fd.append("alt_text", ""); fd.append("location", ""); fd.append("year", ""); fd.append("description", ""); fd.append("featured", "false");
+                                const r = await fetch("/api/upload", { method: "POST", body: fd }); const j = await r.json();
+                                if (j.error) { status[status.length - 1] = "failed"; } else { gal.push(j.url); status[status.length - 1] = "done"; }
+                              } catch { status[status.length - 1] = "failed"; }
+                              setUploadStatuses([...status]);
+                            }
+                            await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, gallery: gal }) });
+                            showMsg("Gallery updated"); const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []); setUploadStatuses([]);
+                          }}
+                          onClick={() => document.getElementById("gallery-upload-input")?.click()}
+                        >
+                          <p className="text-xs text-[#555]">Drop images here or click to select</p>
+                          <p className="text-[10px] text-[#444] mt-1">JPG, PNG, WebP — multiple files supported</p>
+                          <input id="gallery-upload-input" type="file" accept=".jpg,.jpeg,.png,.webp" multiple className="hidden" onChange={async (e) => {
+                            const files = e.target.files; if (!files || files.length === 0) return;
+                            const gal = [...((p.gallery || []).filter((u) => !u.includes("placeholder")))];
+                            const status = [...uploadStatuses];
+                            for (let i = 0; i < files.length; i++) {
+                              status.push("uploading"); setUploadStatuses([...status]);
+                              try {
+                                const fd = new FormData(); fd.append("file", files[i]); fd.append("category", "projects"); fd.append("title", p.title || ""); fd.append("alt_text", ""); fd.append("location", ""); fd.append("year", ""); fd.append("description", ""); fd.append("featured", "false");
+                                const r = await fetch("/api/upload", { method: "POST", body: fd }); const j = await r.json();
+                                if (j.error) { status[status.length - 1] = "failed"; } else { gal.push(j.url); status[status.length - 1] = "done"; }
+                              } catch { status[status.length - 1] = "failed"; }
+                              setUploadStatuses([...status]);
+                            }
+                            await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, gallery: gal }) });
+                            showMsg("Gallery updated"); const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []); setUploadStatuses([]);
+                          }} />
+                        </div>
+
+                        {uploadStatuses.length > 0 && (
+                          <div className="space-y-1 mb-3">
+                            {uploadStatuses.map((s, i) => (
+                              <div key={i} className="flex items-center gap-2 text-[10px]">
+                                <span className={`w-2 h-2 rounded-full ${s === "uploading" ? "bg-amber-400 animate-pulse" : s === "done" ? "bg-emerald-400" : "bg-red-400"}`} />
+                                <span className="text-[#A0A0A0]">Image {i + 1}: {s === "uploading" ? "Uploading..." : s === "done" ? "Done" : "Failed"}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3">
+                          {(p.gallery || []).filter((u) => !u.includes("placeholder")).map((url, i) => (
+                            <div key={i} className="relative group bg-[#0A0A0A] bg-cover bg-center rounded overflow-hidden" style={{ aspectRatio: "4/3", backgroundImage: `url(${url})` }}>
+                              <div className="absolute inset-x-0 bottom-0 flex justify-center gap-1 pb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={async () => {
+                                  const gal = [...((p.gallery || []).filter((u) => !u.includes("placeholder")))];
+                                  if (i > 0) { [gal[i - 1], gal[i]] = [gal[i], gal[i - 1]]; }
+                                  await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, gallery: gal }) });
+                                  const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []);
+                                }} disabled={i === 0} className="w-5 h-5 flex items-center justify-center bg-black/60 text-white rounded text-[10px] disabled:opacity-30 hover:bg-black/80">&#9650;</button>
+                                <button onClick={async () => {
+                                  const gal = [...((p.gallery || []).filter((u) => !u.includes("placeholder")))];
+                                  if (i < gal.length - 1) { [gal[i], gal[i + 1]] = [gal[i + 1], gal[i]]; }
+                                  await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, gallery: gal }) });
+                                  const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []);
+                                }} disabled={i === gal.filter(u => !u.includes("placeholder")).length - 1} className="w-5 h-5 flex items-center justify-center bg-black/60 text-white rounded text-[10px] disabled:opacity-30 hover:bg-black/80">&#9660;</button>
+                                <button onClick={async () => {
+                                  const gal = [...((p.gallery || []).filter((u) => !u.includes("placeholder")))];
+                                  gal.splice(i, 1);
+                                  await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, gallery: gal }) });
+                                  showMsg("Image removed"); const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []);
+                                }} className="w-5 h-5 flex items-center justify-center bg-red-500/80 text-white rounded text-[10px] hover:bg-red-500">&times;</button>
+                              </div>
                             </div>
                           ))}
                         </div>
-                        <label className="inline-block px-3 py-1.5 text-[10px] tracking-wider uppercase bg-[#C8A96A] text-black cursor-pointer hover:bg-[#C8A96A]/90 transition-all">
-                          Add Images
-                          <input type="file" accept=".jpg,.jpeg,.png,.webp" multiple className="hidden" onChange={async (e) => {
-                            const files = e.target.files; if (!files || files.length === 0) return; const gal = [...(p.gallery || [])].filter(u => !u.includes("placeholder"));
-                            for (let i = 0; i < files.length; i++) {
-                              const fd = new FormData(); fd.append("file", files[i]); fd.append("category", "projects"); fd.append("title", p.title || ""); fd.append("alt_text", ""); fd.append("location", ""); fd.append("year", ""); fd.append("description", ""); fd.append("featured", "false");
-                              const r = await fetch("/api/upload", { method: "POST", body: fd }); const j = await r.json(); if (!j.error) gal.push(j.url);
-                            }
-                            await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, gallery: gal }) }); showMsg("Gallery updated"); const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []);
-                          }} />
-                        </label>
                       </div>
                     </div>
                   );
@@ -717,6 +782,21 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {projects.length === 0 && (
+              <div className="mb-6 p-4 bg-[#111] border border-[#C8A96A]/20 max-w-lg">
+                <p className="text-xs text-[#A0A0A0] mb-3">No projects in the database yet. Click below to seed the placeholder projects from your JSON file into the database so you can edit them.</p>
+                <button onClick={async () => {
+                  try {
+                    const res = await fetch("/api/seed-projects", { method: "POST" });
+                    const json = await res.json();
+                    if (json.error) { showMsg(json.error, "error"); return; }
+                    showMsg(`Seeded ${json.count} projects`);
+                    const u = await api("/api/projects");
+                    setProjects(Array.isArray(u) ? u : []);
+                  } catch { showMsg("Failed to seed projects", "error"); }
+                }} className="px-4 py-2 text-xs tracking-[0.2em] uppercase bg-[#C8A96A] text-black hover:bg-[#C8A96A]/90 transition-all">Seed Projects from JSON</button>
+              </div>
+            )}
             <h2 className="text-base md:text-lg font-light text-white mb-4">All Projects ({projects.length})</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {projects.map((p) => (

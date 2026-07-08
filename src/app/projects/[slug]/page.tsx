@@ -168,11 +168,19 @@ function ProjectPageInner({
 
       <div className="px-6 md:px-12">
         <div className="max-w-[1440px] mx-auto">
-          <h2 className="text-xl font-light text-white mb-8 tracking-[0.1em] uppercase">
-            Gallery
-          </h2>
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-xl font-light text-white tracking-[0.1em] uppercase">
+              Gallery
+            </h2>
+            <Link
+              href={`/projects/${project.slug}/gallery`}
+              className="text-xs tracking-[0.2em] uppercase text-[#C8A96A] hover:text-white transition-colors"
+            >
+              View Full Gallery
+            </Link>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-            {project.gallery.map((image, index) => (
+            {project.gallery.slice(0, 4).map((image, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
@@ -193,6 +201,13 @@ function ProjectPageInner({
               </motion.div>
             ))}
           </div>
+          {project.gallery.length > 4 && (
+            <div className="text-center mt-6">
+              <Link href={`/projects/${project.slug}/gallery`} className="text-xs tracking-[0.2em] uppercase text-[#A0A0A0] hover:text-white transition-colors">
+                View all {project.gallery.length} images
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 

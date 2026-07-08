@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import AnimatedSection from "./AnimatedSection";
@@ -7,7 +8,20 @@ import projectsData from "@/data/projects.json";
 import { getCategoryColor } from "@/lib/utils";
 
 export default function Projects() {
-  const featured = projectsData.filter((p) => p.featured);
+  const [projects, setProjects] = useState(projectsData.filter((p) => p.featured));
+
+  useEffect(() => {
+    fetch("/api/projects")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setProjects(data.filter((p: { featured?: boolean }) => p.featured).map((p: { hero_image?: string; heroImage?: string }) => ({
+            ...p, heroImage: p.hero_image || p.heroImage || "/images/placeholder.svg",
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <section className="relative py-24 md:py-32 px-6 md:px-12">
@@ -29,7 +43,7 @@ export default function Projects() {
               variant="fadeIn"
             >
               <Link
-                href={`/projects/${project.slug}`}
+                href={`/projects/${project.slug}/gallery`}
                 className="group block"
               >
                 <div className="image-zoom relative aspect-[16/10] bg-[#111] overflow-hidden">
@@ -54,6 +68,9 @@ export default function Projects() {
                       <span>{project.location}</span>
                       <span>{project.year}</span>
                     </div>
+                    <span className="inline-block mt-3 text-[10px] tracking-wider uppercase text-[#C8A96A] opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      View Gallery &rarr;
+                    </span>
                   </div>
                 </div>
               </Link>

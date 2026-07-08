@@ -1,11 +1,28 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import projectsData from "@/data/projects.json";
 import { getCategoryColor } from "@/lib/utils";
 
 export default function ProjectsPage() {
+  const [projects, setProjects] = useState(projectsData);
+
+  useEffect(() => {
+    fetch("/api/projects")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setProjects(data.map((p: { hero_image?: string; heroImage?: string }) => ({
+            ...p,
+            heroImage: p.hero_image || p.heroImage || "/images/placeholder.svg",
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="pt-28 pb-24 px-6 md:px-12">
       <div className="max-w-[1440px] mx-auto">
@@ -23,7 +40,7 @@ export default function ProjectsPage() {
         </motion.div>
 
         <div className="grid md:grid-cols-2 gap-6 md:gap-8">
-          {projectsData.map((project, index) => (
+          {projects.map((project, index) => (
             <motion.div
               key={project.slug}
               initial={{ opacity: 0, y: 20 }}
@@ -56,6 +73,9 @@ export default function ProjectsPage() {
                       <span>{project.location}</span>
                       <span>{project.year}</span>
                     </div>
+                    <span className="inline-block mt-3 text-[10px] tracking-wider uppercase text-[#C8A96A] opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      View Gallery &rarr;
+                    </span>
                   </div>
                 </div>
               </Link>

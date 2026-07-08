@@ -1,0 +1,67 @@
+[
+  {
+    "slug": "summer-jam",
+    "title": "Summer Jam",
+    "category": "Music",
+    "client": "Summer Jam Entertainment",
+    "location": "Worcester, MA",
+    "year": "2024",
+    "heroImage": "/images/placeholder.svg",
+    "gallery": ["/images/placeholder.svg", "/images/placeholder.svg", "/images/placeholder.svg", "/images/placeholder.svg"],
+    "description": "Full event coverage for one of New England's largest summer music festivals. Capturing the energy of live performances, crowd reactions, and behind-the-scenes moments that made this event unforgettable.",
+    "tags": ["Music", "Events", "Live Performance", "Festival"],
+    "featured": true
+  },
+  {
+    "slug": "boston-fashion-week",
+    "title": "Boston Fashion Week",
+    "category": "Fashion",
+    "client": "Boston Fashion Week",
+    "location": "Boston, MA",
+    "year": "2024",
+    "heroImage": "/images/placeholder.svg",
+    "gallery": ["/images/placeholder.svg", "/images/placeholder.svg", "/images/placeholder.svg", "/images/placeholder.svg"],
+    "description": "Editorial coverage of Boston Fashion Week, capturing runway shows, designer collections, and the intersection of style and culture in one of America's most historic fashion scenes.",
+    "tags": ["Fashion", "Editorial", "Runway", "Events"],
+    "featured": true
+  },
+  {
+    "slug": "no-hype-fest",
+    "title": "No Hype Fest",
+    "category": "Events",
+    "client": "No Hype Fest",
+    "location": "Springfield, MA",
+    "year": "2024",
+    "heroImage": "/images/placeholder.svg",
+    "gallery": ["/images/placeholder.svg", "/images/placeholder.svg", "/images/placeholder.svg", "/images/placeholder.svg"],
+    "description": "A celebration of authentic hip-hop culture, featuring performances, art installations, and community engagement. Documented with a documentary-style approach that captured the raw energy of the event.",
+    "tags": ["Events", "Hip-Hop", "Culture", "Community"],
+    "featured": true
+  },
+  {
+    "slug": "church-conference",
+    "title": "Church Conference",
+    "category": "Events",
+    "client": "City of Light Church",
+    "location": "Boston, MA",
+    "year": "2024",
+    "heroImage": "/images/placeholder.svg",
+    "gallery": ["/images/placeholder.svg", "/images/placeholder.svg", "/images/placeholder.svg", "/images/placeholder.svg"],
+    "description": "Annual conference coverage capturing worship services, keynote sessions, and the powerful moments of community and faith that defined the gathering.",
+    "tags": ["Events", "Church", "Conference", "Community"],
+    "featured": true
+  },
+  {
+    "slug": "athlete-media-day",
+    "title": "Athlete Media Day",
+    "category": "Sports",
+    "client": "Professional Sports Organization",
+    "location": "Boston, MA",
+    "year": "2024",
+    "heroImage": "/images/placeholder.svg",
+    "gallery": ["/images/placeholder.svg", "/images/placeholder.svg", "/images/placeholder.svg", "/images/placeholder.svg"],
+    "description": "Professional media day coverage featuring athlete portraits, action shots, and branding photography for team marketing materials and media distribution.",
+    "tags": ["Sports", "Portraits", "Media", "Branding"],
+    "featured": true
+  }
+]

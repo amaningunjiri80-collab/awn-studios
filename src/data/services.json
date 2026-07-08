@@ -1,0 +1,66 @@
+[
+  {
+    "id": "photography",
+    "title": "Photography",
+    "description": "Premium photography across sports, music, fashion, events, and more. Every frame is crafted with intention and editorial quality.",
+    "included": ["Professional editing", "High-resolution files", "Print-ready formats", "Online gallery", "Usage rights"],
+    "turnaround": "3-5 business days",
+    "cta": "Book Photography"
+  },
+  {
+    "id": "videography",
+    "title": "Videography",
+    "description": "Cinematic video production for events, brand campaigns, and creative projects. From concept to final cut, we deliver moving stories.",
+    "included": ["4K Cinema quality", "Professional grading", "Sound design", "Drone capabilities", "Multi-camera setup"],
+    "turnaround": "1-2 weeks",
+    "cta": "Book Videography"
+  },
+  {
+    "id": "content-creation",
+    "title": "Content Creation",
+    "description": "Strategic content production for brands and businesses. Social media ready, campaign focused, and engineered to engage.",
+    "included": ["Strategy session", "Content calendar", "Photo & video", "Editing & retouching", "Platform optimization"],
+    "turnaround": "Varies by scope",
+    "cta": "Book Content"
+  },
+  {
+    "id": "branding",
+    "title": "Branding",
+    "description": "Visual identity development that communicates your story. Logos, color systems, typography, and complete brand guidelines.",
+    "included": ["Brand strategy", "Logo design", "Visual identity", "Brand guidelines", "Asset package"],
+    "turnaround": "2-4 weeks",
+    "cta": "Book Branding"
+  },
+  {
+    "id": "sports-media",
+    "title": "Sports Media",
+    "description": "Specialized sports photography and videography. Action shots, athlete portraits, game coverage, and team branding.",
+    "included": ["Game day coverage", "Athlete portraits", "Action sequences", "Team branding", "Media kit delivery"],
+    "turnaround": "48 hours",
+    "cta": "Book Sports Media"
+  },
+  {
+    "id": "event-coverage",
+    "title": "Event Coverage",
+    "description": "Comprehensive event documentation from start to finish. Concerts, conferences, festivals, and corporate events.",
+    "included": ["Full day coverage", "Second shooter option", "Edited gallery", "Same-day previews", "Photo booth option"],
+    "turnaround": "5-7 business days",
+    "cta": "Book Event Coverage"
+  },
+  {
+    "id": "creative-direction",
+    "title": "Creative Direction",
+    "description": "Art direction and creative strategy for campaigns, shoots, and visual projects. Concept to execution.",
+    "included": ["Concept development", "Mood boards", "Production planning", "On-set direction", "Post-production oversight"],
+    "turnaround": "Varies by project",
+    "cta": "Book Creative Direction"
+  },
+  {
+    "id": "website-design",
+    "title": "Website Design",
+    "description": "Custom website design and development. Premium, modern, and optimized for creative professionals and brands.",
+    "included": ["Custom design", "Responsive development", "SEO optimization", "CMS integration", "Performance optimization"],
+    "turnaround": "3-6 weeks",
+    "cta": "Book Website Design"
+  }
+]

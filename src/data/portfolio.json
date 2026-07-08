@@ -1,0 +1,182 @@
+[
+  {
+    "id": "sports-1",
+    "title": "Athlete in Motion",
+    "category": "Sports",
+    "location": "Boston, MA",
+    "year": "2024",
+    "image": "/images/placeholder.svg",
+    "featured": true,
+    "description": "Capturing the raw intensity of elite athletic performance."
+  },
+  {
+    "id": "sports-2",
+    "title": "Game Day",
+    "category": "Sports",
+    "location": "Foxborough, MA",
+    "year": "2024",
+    "image": "/images/placeholder.svg",
+    "featured": true,
+    "description": "Behind the scenes of professional sports coverage."
+  },
+  {
+    "id": "music-1",
+    "title": "Summer Jam",
+    "category": "Music",
+    "location": "Worcester, MA",
+    "year": "2024",
+    "image": "/images/placeholder.svg",
+    "featured": true,
+    "description": "Electric performances captured at the peak of energy."
+  },
+  {
+    "id": "music-2",
+    "title": "Studio Session",
+    "category": "Music",
+    "location": "Boston, MA",
+    "year": "2024",
+    "image": "/images/placeholder.svg",
+    "featured": true,
+    "description": "Intimate studio portraits of emerging artists."
+  },
+  {
+    "id": "fashion-1",
+    "title": "Boston Fashion Week",
+    "category": "Fashion",
+    "location": "Boston, MA",
+    "year": "2024",
+    "image": "/images/placeholder.svg",
+    "featured": true,
+    "description": "Editorial coverage of the season's most anticipated shows."
+  },
+  {
+    "id": "fashion-2",
+    "title": "Urban Editorial",
+    "category": "Fashion",
+    "location": "Massachusetts",
+    "year": "2024",
+    "image": "/images/placeholder.svg",
+    "featured": false,
+    "description": "Street fashion meets high-end editorial aesthetics."
+  },
+  {
+    "id": "events-1",
+    "title": "No Hype Fest",
+    "category": "Events",
+    "location": "Springfield, MA",
+    "year": "2024",
+    "image": "/images/placeholder.svg",
+    "featured": true,
+    "description": "A celebration of culture, music, and community."
+  },
+  {
+    "id": "events-2",
+    "title": "Church Conference",
+    "category": "Events",
+    "location": "Boston, MA",
+    "year": "2024",
+    "image": "/images/placeholder.svg",
+    "featured": true,
+    "description": "Documenting moments of faith and connection."
+  },
+  {
+    "id": "branding-1",
+    "title": "Brand Campaign",
+    "category": "Branding",
+    "location": "New York",
+    "year": "2024",
+    "image": "/images/placeholder.svg",
+    "featured": true,
+    "description": "Visual identity campaign for a premium lifestyle brand."
+  },
+  {
+    "id": "branding-2",
+    "title": "Product Launch",
+    "category": "Branding",
+    "location": "Boston, MA",
+    "year": "2024",
+    "image": "/images/placeholder.svg",
+    "featured": false,
+    "description": "Commercial photography for a major product release."
+  },
+  {
+    "id": "portraits-1",
+    "title": "The Portrait Series",
+    "category": "Portraits",
+    "location": "Massachusetts",
+    "year": "2024",
+    "image": "/images/placeholder.svg",
+    "featured": true,
+    "description": "Intimate portraits revealing the subject's true essence."
+  },
+  {
+    "id": "lifestyle-1",
+    "title": "New England Life",
+    "category": "Lifestyle",
+    "location": "Massachusetts",
+    "year": "2024",
+    "image": "/images/placeholder.svg",
+    "featured": true,
+    "description": "Authentic lifestyle photography celebrating everyday moments."
+  },
+  {
+    "id": "church-1",
+    "title": "Sunday Service",
+    "category": "Church",
+    "location": "Boston, MA",
+    "year": "2024",
+    "image": "/images/placeholder.svg",
+    "featured": false,
+    "description": "Worship and community documented with reverence."
+  },
+  {
+    "id": "bts-1",
+    "title": "Behind The Lens",
+    "category": "Behind The Scenes",
+    "location": "Various",
+    "year": "2024",
+    "image": "/images/placeholder.svg",
+    "featured": false,
+    "description": "A look behind the curtain at the creative process."
+  },
+  {
+    "id": "graduation-1",
+    "title": "Commencement",
+    "category": "Graduation",
+    "location": "Massachusetts",
+    "year": "2024",
+    "image": "/images/placeholder.svg",
+    "featured": false,
+    "description": "Celebrating achievements and new beginnings."
+  },
+  {
+    "id": "commercial-1",
+    "title": "Commercial Series",
+    "category": "Commercial",
+    "location": "Boston, MA",
+    "year": "2024",
+    "image": "/images/placeholder.svg",
+    "featured": false,
+    "description": "Polished commercial work for discerning clients."
+  },
+  {
+    "id": "business-1",
+    "title": "Executive Portraits",
+    "category": "Business",
+    "location": "Massachusetts",
+    "year": "2024",
+    "image": "/images/placeholder.svg",
+    "featured": false,
+    "description": "Professional headshots and corporate branding."
+  },
+  {
+    "id": "athlete-1",
+    "title": "Athlete Media Day",
+    "category": "Sports",
+    "location": "Boston, MA",
+    "year": "2024",
+    "image": "/images/placeholder.svg",
+    "featured": true,
+    "description": "Professional athlete portraits and action shots."
+  }
+]

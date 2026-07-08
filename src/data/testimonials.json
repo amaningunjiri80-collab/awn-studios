@@ -1,0 +1,30 @@
+[
+  {
+    "id": 1,
+    "name": "Marcus Johnson",
+    "business": "Summit Entertainment",
+    "quote": "AWN Studios brought a level of creativity and professionalism that transformed our event coverage. The images didn't just document the night - they told a story that connected with our audience on a deeper level.",
+    "image": "/images/placeholder.svg"
+  },
+  {
+    "id": 2,
+    "name": "Sarah Chen",
+    "business": "Chen Creative Agency",
+    "quote": "Working with AWN was a game-changer for our brand campaign. The attention to detail, the creative direction, and the final deliverables exceeded every expectation. This is what happens when artistry meets reliability.",
+    "image": "/images/placeholder.svg"
+  },
+  {
+    "id": 3,
+    "name": "David Osei",
+    "business": "Osei Marketing Group",
+    "quote": "I've worked with dozens of photographers, and AWN stands alone. The ability to capture not just an image but an entire feeling - that's rare. Our clients still rave about the campaign photography.",
+    "image": "/images/placeholder.svg"
+  },
+  {
+    "id": 4,
+    "name": "Rebecca Torres",
+    "business": "Torres Events",
+    "quote": "The sports media package from AWN completely elevated our team's brand. The action shots were incredible, but the portrait work was what really set it apart. Professional, fast, and exceptionally talented.",
+    "image": "/images/placeholder.svg"
+  }
+]

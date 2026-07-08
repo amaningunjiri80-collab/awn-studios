@@ -14,7 +14,19 @@ export async function POST() {
         .eq("slug", project.slug)
         .single();
 
-      if (existing) continue;
+      if (existing) {
+        const { error: updateError } = await supabaseAdmin
+          .from("projects")
+          .update({ project_date: project.project_date })
+          .eq("id", existing.id);
+
+        if (updateError) {
+          console.error(`Failed to update ${project.slug}:`, updateError.message);
+          continue;
+        }
+        count++;
+        continue;
+      }
 
       const { error } = await supabaseAdmin
         .from("projects")

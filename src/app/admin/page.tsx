@@ -71,7 +71,11 @@ export default function AdminPage() {
   const [portForm, setPortForm] = useState({ url: "", title: "", category: "", location: "", year: "", description: "", alt_text: "", featured: false });
   const [projForm, setProjForm] = useState({ slug: "", title: "", category: "", client: "", location: "", year: "", hero_image: "", description: "", tags: "", featured: false });
   const [testForm, setTestForm] = useState({ name: "", business: "", quote: "", image: "" });
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadFiles, setUploadFiles] = useState<FileList | null>(null);
+  const [projImgFiles, setProjImgFiles] = useState<FileList | null>(null);
+  const [projImgProject, setProjImgProject] = useState("");
+  const [projImgType, setProjImgType] = useState<"hero" | "gallery">("gallery");
+  const [projImgUploading, setProjImgUploading] = useState(false);
   const [uploadCategory, setUploadCategory] = useState("Sports");
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadAlt, setUploadAlt] = useState("");
@@ -135,23 +139,27 @@ export default function AdminPage() {
   // Upload handler
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uploadFile) return;
+    if (!uploadFiles || uploadFiles.length === 0) return;
     setUploading(true);
+    let successCount = 0;
+    let errorCount = 0;
     try {
-      const fd = new FormData();
-      fd.append("file", uploadFile);
-      fd.append("category", uploadCategory);
-      fd.append("title", uploadTitle);
-      fd.append("alt_text", uploadAlt);
-      fd.append("location", uploadLocation);
-      fd.append("year", uploadYear);
-      fd.append("description", uploadDescription);
-      fd.append("featured", String(uploadFeatured));
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      const json = await res.json();
-      if (json.error) throw new Error(json.error);
-      showMsg(`Uploaded: ${json.url}`);
-      setUploadFile(null);
+      for (let i = 0; i < uploadFiles.length; i++) {
+        const fd = new FormData();
+        fd.append("file", uploadFiles[i]);
+        fd.append("category", uploadCategory);
+        fd.append("title", uploadTitle);
+        fd.append("alt_text", uploadAlt);
+        fd.append("location", uploadLocation);
+        fd.append("year", uploadYear);
+        fd.append("description", uploadDescription);
+        fd.append("featured", String(uploadFeatured));
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        const json = await res.json();
+        if (json.error) { errorCount++; } else { successCount++; }
+      }
+      showMsg(`${successCount} uploaded, ${errorCount} failed`);
+      setUploadFiles(null);
       setUploadTitle("");
       setUploadAlt("");
       setUploadLocation("");
@@ -249,6 +257,49 @@ export default function AdminPage() {
       const updated = await api("/api/projects");
       setProjects(Array.isArray(updated) ? updated : []);
     } catch (err: unknown) { showMsg(err instanceof Error ? err.message : "Error", "error"); }
+  };
+
+  const handleProjectImageUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!projImgFiles || projImgFiles.length === 0 || !projImgProject) return;
+    setProjImgUploading(true);
+    try {
+      const project = projects.find((p) => p.id === projImgProject);
+      if (!project) throw new Error("Project not found");
+      const gallery: string[] = (project as { gallery?: string[] }).gallery || [];
+      const urls: string[] = [];
+      for (let i = 0; i < projImgFiles.length; i++) {
+        const fd = new FormData();
+        fd.append("file", projImgFiles[i]);
+        fd.append("category", "projects");
+        fd.append("title", project.title as string);
+        fd.append("alt_text", "");
+        fd.append("location", "");
+        fd.append("year", "");
+        fd.append("description", "");
+        fd.append("featured", "false");
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        const json = await res.json();
+        if (json.error) throw new Error(json.error);
+        urls.push(json.url);
+      }
+      const updates: Record<string, unknown> = {};
+      if (projImgType === "hero") {
+        updates.hero_image = urls[0];
+      } else {
+        updates.gallery = [...gallery, ...urls];
+      }
+      await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: projImgProject, ...updates }) });
+      showMsg(`Uploaded ${urls.length} image(s) to project`);
+      setProjImgFiles(null);
+      const updated = await api("/api/projects");
+      setProjects(Array.isArray(updated) ? updated : []);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      showMsg(msg, "error");
+    } finally {
+      setProjImgUploading(false);
+    }
   };
 
   const deleteProject = async (id: string) => {
@@ -419,8 +470,8 @@ export default function AdminPage() {
             <form onSubmit={handleUpload} className="space-y-3 mb-8 max-w-lg">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className={lblCls}>Image File (jpg/png/webp, max 100MB)</label>
-                  <input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                  <label className={lblCls}>Images (select multiple)</label>
+                  <input type="file" accept=".jpg,.jpeg,.png,.webp" multiple onChange={(e) => setUploadFiles(e.target.files)}
                     className={`${inpCls} file:mr-3 file:py-1 file:px-3 file:border-0 file:text-xs file:tracking-wider file:uppercase file:bg-white/10 file:text-white hover:file:bg-white/20`} required />
                 </div>
                 <div>
@@ -458,9 +509,9 @@ export default function AdminPage() {
                 <input type="checkbox" checked={uploadFeatured} onChange={(e) => setUploadFeatured(e.target.checked)} className="accent-[#C8A96A]" />
                 <span className="text-xs text-[#A0A0A0]">Featured</span>
               </label>
-              <button type="submit" disabled={uploading || !uploadFile}
+              <button type="submit" disabled={uploading || !uploadFiles || uploadFiles.length === 0}
                 className="px-5 py-2.5 text-xs tracking-[0.2em] uppercase bg-[#C8A96A] text-black hover:bg-[#C8A96A]/90 transition-all disabled:opacity-50">
-                {uploading ? "Uploading..." : "Upload Image"}
+                {uploading ? "Uploading..." : uploadFiles && uploadFiles.length > 1 ? `Upload ${uploadFiles.length} Images` : "Upload Image"}
               </button>
             </form>
 
@@ -536,6 +587,38 @@ export default function AdminPage() {
               </label>
               <button type="submit" className="px-5 py-2.5 text-xs tracking-[0.2em] uppercase bg-white text-black hover:bg-white/90 transition-all">Save Project</button>
             </form>
+
+            <div className="p-4 bg-[#111] border border-white/5 mb-8 max-w-lg">
+              <h3 className="text-xs tracking-wider uppercase text-white/40 mb-3">Upload Images to Project</h3>
+              <form onSubmit={handleProjectImageUpload} className="space-y-3">
+                <div>
+                  <label className={lblCls}>Select Project</label>
+                  <select value={projImgProject} onChange={(e) => setProjImgProject(e.target.value)} className={inpCls} required>
+                    <option value="">Choose a project</option>
+                    {projects.map((p) => <option key={p.id as string} value={p.id as string}>{p.title as string}</option>)}
+                  </select>
+                </div>
+                <div className="flex gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="projImgType" checked={projImgType === "gallery"} onChange={() => setProjImgType("gallery")} className="accent-[#C8A96A]" />
+                    <span className="text-xs text-[#A0A0A0]">Gallery</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="projImgType" checked={projImgType === "hero"} onChange={() => setProjImgType("hero")} className="accent-[#C8A96A]" />
+                    <span className="text-xs text-[#A0A0A0]">Hero Image</span>
+                  </label>
+                </div>
+                <div>
+                  <label className={lblCls}>{projImgType === "hero" ? "Image File" : "Images (select multiple)"}</label>
+                  <input type="file" accept=".jpg,.jpeg,.png,.webp" multiple={projImgType === "gallery"} onChange={(e) => setProjImgFiles(e.target.files)}
+                    className={`${inpCls} file:mr-3 file:py-1 file:px-3 file:border-0 file:text-xs file:tracking-wider file:uppercase file:bg-white/10 file:text-white hover:file:bg-white/20`} required />
+                </div>
+                <button type="submit" disabled={projImgUploading || !projImgProject || !projImgFiles || projImgFiles.length === 0}
+                  className="px-4 py-2 text-xs tracking-[0.2em] uppercase bg-[#C8A96A] text-black hover:bg-[#C8A96A]/90 transition-all disabled:opacity-50">
+                  {projImgUploading ? "Uploading..." : "Upload to Project"}
+                </button>
+              </form>
+            </div>
 
             <h2 className="text-base md:text-lg font-light text-white mb-4">Projects ({projects.length})</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

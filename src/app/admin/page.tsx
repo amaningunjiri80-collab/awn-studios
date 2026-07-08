@@ -251,7 +251,7 @@ export default function AdminPage() {
     try {
       await api("/api/projects", {
         method: "POST",
-        body: JSON.stringify({ ...projForm, tags: projForm.tags.split(",").map((t) => t.trim()).filter(Boolean), gallery: [projForm.hero_image] }),
+        body: JSON.stringify({ ...projForm, published: true, tags: projForm.tags.split(",").map((t) => t.trim()).filter(Boolean), gallery: [projForm.hero_image] }),
       });
       showMsg("Project added");
       setProjForm({ slug: "", title: "", category: "", client: "", location: "", year: "", hero_image: "", description: "", tags: "", featured: false });
@@ -589,66 +589,113 @@ export default function AdminPage() {
               <button type="submit" className="px-5 py-2.5 text-xs tracking-[0.2em] uppercase bg-white text-black hover:bg-white/90 transition-all">Save Project</button>
             </form>
 
-            <div className="p-4 bg-[#111] border border-white/5 mb-8 max-w-lg">
-              <h3 className="text-xs tracking-wider uppercase text-white/40 mb-3">Edit Project Images</h3>
+            <div className="p-4 bg-[#111] border border-white/5 mb-8 max-w-xl">
+              <h3 className="text-xs tracking-wider uppercase text-white/40 mb-3">Edit Project</h3>
               <div className="space-y-3">
                 <div>
                   <label className={lblCls}>Select Project</label>
                   <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} className={inpCls}>
                     <option value="">Choose a project</option>
-                    {projects.map((p) => <option key={p.id as string} value={p.id as string}>{p.title as string}</option>)}
+                    {projects.map((p) => <option key={p.id as string} value={p.id as string}>{(p as { published?: boolean }).published === false ? "[Draft] " : ""}{p.title as string}</option>)}
                   </select>
                 </div>
 
                 {(() => {
                   const project = projects.find((p) => p.id === selectedProjectId);
                   if (!project) return <p className="text-xs text-[#555]">Select a project above</p>;
-                  const p = project as { hero_image?: string; gallery?: string[]; title?: string; slug?: string; category?: string };
+                  const p = project as { hero_image?: string; gallery?: string[]; title?: string; slug?: string; category?: string; client?: string; location?: string; year?: string; description?: string; tags?: string[]; featured?: boolean; published?: boolean; id?: string };
+
+                  const saveField = async (field: string, value: unknown) => {
+                    await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, [field]: value }) });
+                    const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []);
+                  };
+
                   return (
                     <div className="space-y-4">
                       <div className="flex items-center justify-between border-b border-white/5 pb-2">
                         <div>
-                          <p className="text-sm text-white">{p.title}</p>
+                          <p className="text-sm text-white">{p.title}{p.published === false ? <span className="text-amber-400 text-[10px] ml-2">Unpublished</span> : <span className="text-emerald-400 text-[10px] ml-2">Published</span>}</p>
                           <p className="text-[10px] text-[#555]">{p.slug} &middot; {p.category}</p>
                         </div>
-                        <button onClick={() => deleteProject(project.id as string)}
-                          className="text-red-400 text-xs hover:text-red-300 transition-colors">Delete</button>
+                        <div className="flex gap-2">
+                          <Link href={`/projects/${p.slug}?preview=true`} target="_blank" className="px-2 py-1 text-[10px] tracking-wider uppercase bg-white/10 text-white hover:bg-white/20 transition-all rounded">Preview</Link>
+                          <button onClick={() => deleteProject(project.id as string)} className="text-red-400 text-xs hover:text-red-300 transition-colors">Delete</button>
+                        </div>
                       </div>
 
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className={lblCls}>Title</label>
+                          <input type="text" defaultValue={p.title} onBlur={(e) => saveField("title", e.target.value)} className={inpCls} />
+                        </div>
+                        <div>
+                          <label className={lblCls}>Slug</label>
+                          <input type="text" defaultValue={p.slug} onBlur={(e) => saveField("slug", e.target.value)} className={inpCls} />
+                        </div>
+                        <div>
+                          <label className={lblCls}>Category</label>
+                          <select defaultValue={p.category} onChange={(e) => saveField("category", e.target.value)} className={inpCls}>
+                            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className={lblCls}>Client</label>
+                          <input type="text" defaultValue={p.client} onBlur={(e) => saveField("client", e.target.value)} className={inpCls} />
+                        </div>
+                        <div>
+                          <label className={lblCls}>Location</label>
+                          <input type="text" defaultValue={p.location} onBlur={(e) => saveField("location", e.target.value)} className={inpCls} />
+                        </div>
+                        <div>
+                          <label className={lblCls}>Year</label>
+                          <input type="text" defaultValue={p.year} onBlur={(e) => saveField("year", e.target.value)} className={inpCls} />
+                        </div>
+                      </div>
                       <div>
+                        <label className={lblCls}>Description</label>
+                        <textarea rows={2} defaultValue={p.description} onBlur={(e) => saveField("description", e.target.value)} className={inpCls} />
+                      </div>
+                      <div>
+                        <label className={lblCls}>Tags (comma separated)</label>
+                        <input type="text" defaultValue={(p.tags || []).join(", ")} onBlur={(e) => saveField("tags", e.target.value.split(",").map((t: string) => t.trim()).filter(Boolean))} className={inpCls} />
+                      </div>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" defaultChecked={p.featured} onChange={(e) => saveField("featured", e.target.checked)} className="accent-[#C8A96A]" />
+                          <span className="text-xs text-[#A0A0A0]">Featured</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" defaultChecked={p.published !== false} onChange={(e) => saveField("published", e.target.checked)} className="accent-[#C8A96A]" />
+                          <span className="text-xs text-[#A0A0A0]">Published</span>
+                        </label>
+                      </div>
+
+                      <div className="border-t border-white/5 pt-4">
                         <label className={lblCls}>Hero Image</label>
                         <div className="flex gap-2 items-start">
                           <div className="w-24 h-16 bg-cover bg-center rounded flex-shrink-0 bg-[#0A0A0A]" style={{ backgroundImage: p.hero_image && !p.hero_image.includes("placeholder") ? `url(${p.hero_image})` : "none" }}>
                             {(!p.hero_image || p.hero_image.includes("placeholder")) && <div className="w-full h-full flex items-center justify-center text-[10px] text-[#555]">No image</div>}
                           </div>
-                          <div className="flex gap-1">
-                            <label className="px-2 py-1 text-[10px] tracking-wider uppercase bg-[#C8A96A] text-black cursor-pointer hover:bg-[#C8A96A]/90 transition-all">
-                              Replace
-                              <input type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden" onChange={async (e) => {
-                                const f = e.target.files?.[0]; if (!f) return;
-                                const fd = new FormData(); fd.append("file", f); fd.append("category", "projects"); fd.append("title", p.title || ""); fd.append("alt_text", ""); fd.append("location", ""); fd.append("year", ""); fd.append("description", ""); fd.append("featured", "false");
-                                const r = await fetch("/api/upload", { method: "POST", body: fd }); const j = await r.json(); if (j.error) return showMsg(j.error, "error");
-                                await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, hero_image: j.url }) });
-                                showMsg("Hero image updated");
-                                const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []);
-                              }} />
-                            </label>
-                          </div>
+                          <label className="px-2 py-1 text-[10px] tracking-wider uppercase bg-[#C8A96A] text-black cursor-pointer hover:bg-[#C8A96A]/90 transition-all">
+                            Replace
+                            <input type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden" onChange={async (e) => {
+                              const f = e.target.files?.[0]; if (!f) return;
+                              const fd = new FormData(); fd.append("file", f); fd.append("category", "projects"); fd.append("title", p.title || ""); fd.append("alt_text", ""); fd.append("location", ""); fd.append("year", ""); fd.append("description", ""); fd.append("featured", "false");
+                              const r = await fetch("/api/upload", { method: "POST", body: fd }); const j = await r.json(); if (j.error) return showMsg(j.error, "error");
+                              await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, hero_image: j.url }) });
+                              showMsg("Hero image updated"); const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []);
+                            }} />
+                          </label>
                         </div>
                       </div>
 
-                      <div>
-                        <label className={lblCls}>Gallery ({p.gallery?.length || 0} images)</label>
+                      <div className="border-t border-white/5 pt-4">
+                        <label className={lblCls}>Gallery ({p.gallery?.filter((u) => !u.includes("placeholder")).length || 0} images)</label>
                         <div className="grid grid-cols-4 gap-2 mb-3">
                           {(p.gallery || []).map((url, i) => (
                             <div key={i} className="relative group aspect-square bg-[#0A0A0A] bg-cover bg-center rounded overflow-hidden" style={{ backgroundImage: url && !url.includes("placeholder") ? `url(${url})` : "none" }}>
                               {(!url || url.includes("placeholder")) && <div className="w-full h-full flex items-center justify-center text-[10px] text-[#555]">Empty</div>}
-                              <button onClick={async () => {
-                                const gal = [...(p.gallery || [])]; gal.splice(i, 1);
-                                await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, gallery: gal }) });
-                                showMsg("Image removed");
-                                const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []);
-                              }} className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-red-500/80 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity">&times;</button>
+                              <button onClick={async () => { const gal = [...(p.gallery || [])]; gal.splice(i, 1); await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, gallery: gal }) }); showMsg("Image removed"); const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []); }} className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-red-500/80 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity">&times;</button>
                             </div>
                           ))}
                         </div>
@@ -660,9 +707,7 @@ export default function AdminPage() {
                               const fd = new FormData(); fd.append("file", files[i]); fd.append("category", "projects"); fd.append("title", p.title || ""); fd.append("alt_text", ""); fd.append("location", ""); fd.append("year", ""); fd.append("description", ""); fd.append("featured", "false");
                               const r = await fetch("/api/upload", { method: "POST", body: fd }); const j = await r.json(); if (!j.error) gal.push(j.url);
                             }
-                            await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, gallery: gal }) });
-                            showMsg("Gallery updated");
-                            const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []);
+                            await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, gallery: gal }) }); showMsg("Gallery updated"); const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []);
                           }} />
                         </label>
                       </div>

@@ -1,22 +1,45 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Lightbox from "@/components/Lightbox";
 import projectsData from "@/data/projects.json";
 import { getCategoryColor } from "@/lib/utils";
+import { useSearchParams } from "next/navigation";
 
-export default function ProjectPage({
+export default function ProjectPage(props: { params: Promise<{ slug: string }> }) {
+  return (
+    <Suspense fallback={<div className="pt-28 pb-24 px-6 text-center"><p className="text-sm text-[#555]">Loading...</p></div>}>
+      <ProjectPageInner {...props} />
+    </Suspense>
+  );
+}
+
+function ProjectPageInner({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
+  const searchParams = useSearchParams();
+  const isPreview = searchParams.get("preview") === "true";
+  const [project, setProject] = useState(() => projectsData.find((p) => p.slug === slug));
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const project = projectsData.find((p) => p.slug === slug);
+  useEffect(() => {
+    fetch("/api/projects")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!Array.isArray(data)) return;
+        const live = data.find((p: { slug: string }) => p.slug === slug);
+        if (live && (isPreview || live.published !== false)) {
+          setProject(live);
+        }
+      })
+      .catch(() => {});
+  }, [slug, isPreview]);
 
   if (!project) {
     return (

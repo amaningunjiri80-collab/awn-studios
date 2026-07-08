@@ -76,6 +76,7 @@ export default function AdminPage() {
   const [projImgProject, setProjImgProject] = useState("");
   const [projImgType, setProjImgType] = useState<"hero" | "gallery">("gallery");
   const [projImgUploading, setProjImgUploading] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState("");
   const [uploadCategory, setUploadCategory] = useState("Sports");
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadAlt, setUploadAlt] = useState("");
@@ -589,38 +590,89 @@ export default function AdminPage() {
             </form>
 
             <div className="p-4 bg-[#111] border border-white/5 mb-8 max-w-lg">
-              <h3 className="text-xs tracking-wider uppercase text-white/40 mb-3">Upload Images to Project</h3>
-              <form onSubmit={handleProjectImageUpload} className="space-y-3">
+              <h3 className="text-xs tracking-wider uppercase text-white/40 mb-3">Edit Project Images</h3>
+              <div className="space-y-3">
                 <div>
                   <label className={lblCls}>Select Project</label>
-                  <select value={projImgProject} onChange={(e) => setProjImgProject(e.target.value)} className={inpCls} required>
+                  <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} className={inpCls}>
                     <option value="">Choose a project</option>
                     {projects.map((p) => <option key={p.id as string} value={p.id as string}>{p.title as string}</option>)}
                   </select>
                 </div>
-                <div className="flex gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="projImgType" checked={projImgType === "gallery"} onChange={() => setProjImgType("gallery")} className="accent-[#C8A96A]" />
-                    <span className="text-xs text-[#A0A0A0]">Gallery</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="projImgType" checked={projImgType === "hero"} onChange={() => setProjImgType("hero")} className="accent-[#C8A96A]" />
-                    <span className="text-xs text-[#A0A0A0]">Hero Image</span>
-                  </label>
-                </div>
-                <div>
-                  <label className={lblCls}>{projImgType === "hero" ? "Image File" : "Images (select multiple)"}</label>
-                  <input type="file" accept=".jpg,.jpeg,.png,.webp" multiple={projImgType === "gallery"} onChange={(e) => setProjImgFiles(e.target.files)}
-                    className={`${inpCls} file:mr-3 file:py-1 file:px-3 file:border-0 file:text-xs file:tracking-wider file:uppercase file:bg-white/10 file:text-white hover:file:bg-white/20`} required />
-                </div>
-                <button type="submit" disabled={projImgUploading || !projImgProject || !projImgFiles || projImgFiles.length === 0}
-                  className="px-4 py-2 text-xs tracking-[0.2em] uppercase bg-[#C8A96A] text-black hover:bg-[#C8A96A]/90 transition-all disabled:opacity-50">
-                  {projImgUploading ? "Uploading..." : "Upload to Project"}
-                </button>
-              </form>
+
+                {(() => {
+                  const project = projects.find((p) => p.id === selectedProjectId);
+                  if (!project) return <p className="text-xs text-[#555]">Select a project above</p>;
+                  const p = project as { hero_image?: string; gallery?: string[]; title?: string; slug?: string; category?: string };
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                        <div>
+                          <p className="text-sm text-white">{p.title}</p>
+                          <p className="text-[10px] text-[#555]">{p.slug} &middot; {p.category}</p>
+                        </div>
+                        <button onClick={() => deleteProject(project.id as string)}
+                          className="text-red-400 text-xs hover:text-red-300 transition-colors">Delete</button>
+                      </div>
+
+                      <div>
+                        <label className={lblCls}>Hero Image</label>
+                        <div className="flex gap-2 items-start">
+                          <div className="w-24 h-16 bg-cover bg-center rounded flex-shrink-0 bg-[#0A0A0A]" style={{ backgroundImage: p.hero_image && !p.hero_image.includes("placeholder") ? `url(${p.hero_image})` : "none" }}>
+                            {(!p.hero_image || p.hero_image.includes("placeholder")) && <div className="w-full h-full flex items-center justify-center text-[10px] text-[#555]">No image</div>}
+                          </div>
+                          <div className="flex gap-1">
+                            <label className="px-2 py-1 text-[10px] tracking-wider uppercase bg-[#C8A96A] text-black cursor-pointer hover:bg-[#C8A96A]/90 transition-all">
+                              Replace
+                              <input type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden" onChange={async (e) => {
+                                const f = e.target.files?.[0]; if (!f) return;
+                                const fd = new FormData(); fd.append("file", f); fd.append("category", "projects"); fd.append("title", p.title || ""); fd.append("alt_text", ""); fd.append("location", ""); fd.append("year", ""); fd.append("description", ""); fd.append("featured", "false");
+                                const r = await fetch("/api/upload", { method: "POST", body: fd }); const j = await r.json(); if (j.error) return showMsg(j.error, "error");
+                                await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, hero_image: j.url }) });
+                                showMsg("Hero image updated");
+                                const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []);
+                              }} />
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className={lblCls}>Gallery ({p.gallery?.length || 0} images)</label>
+                        <div className="grid grid-cols-4 gap-2 mb-3">
+                          {(p.gallery || []).map((url, i) => (
+                            <div key={i} className="relative group aspect-square bg-[#0A0A0A] bg-cover bg-center rounded overflow-hidden" style={{ backgroundImage: url && !url.includes("placeholder") ? `url(${url})` : "none" }}>
+                              {(!url || url.includes("placeholder")) && <div className="w-full h-full flex items-center justify-center text-[10px] text-[#555]">Empty</div>}
+                              <button onClick={async () => {
+                                const gal = [...(p.gallery || [])]; gal.splice(i, 1);
+                                await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, gallery: gal }) });
+                                showMsg("Image removed");
+                                const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []);
+                              }} className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-red-500/80 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity">&times;</button>
+                            </div>
+                          ))}
+                        </div>
+                        <label className="inline-block px-3 py-1.5 text-[10px] tracking-wider uppercase bg-[#C8A96A] text-black cursor-pointer hover:bg-[#C8A96A]/90 transition-all">
+                          Add Images
+                          <input type="file" accept=".jpg,.jpeg,.png,.webp" multiple className="hidden" onChange={async (e) => {
+                            const files = e.target.files; if (!files || files.length === 0) return; const gal = [...(p.gallery || [])].filter(u => !u.includes("placeholder"));
+                            for (let i = 0; i < files.length; i++) {
+                              const fd = new FormData(); fd.append("file", files[i]); fd.append("category", "projects"); fd.append("title", p.title || ""); fd.append("alt_text", ""); fd.append("location", ""); fd.append("year", ""); fd.append("description", ""); fd.append("featured", "false");
+                              const r = await fetch("/api/upload", { method: "POST", body: fd }); const j = await r.json(); if (!j.error) gal.push(j.url);
+                            }
+                            await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, gallery: gal }) });
+                            showMsg("Gallery updated");
+                            const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []);
+                          }} />
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
 
-            <h2 className="text-base md:text-lg font-light text-white mb-4">Projects ({projects.length})</h2>
+            <h2 className="text-base md:text-lg font-light text-white mb-4">All Projects ({projects.length})</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {projects.map((p) => (
                 <div key={p.id as string} className="flex items-center justify-between p-3 bg-[#111] border border-white/5">
@@ -628,8 +680,7 @@ export default function AdminPage() {
                     <p className="text-sm text-white">{p.title as string}</p>
                     <p className="text-[10px] text-[#555]">{p.slug as string} &middot; {(p as { category?: string }).category || ""}</p>
                   </div>
-                  <button onClick={() => deleteProject(p.id as string)}
-                    className="text-red-400 text-xs hover:text-red-300 transition-colors">Delete</button>
+                  <button onClick={() => { setSelectedProjectId(p.id as string); }} className="text-[#C8A96A] text-xs hover:text-[#C8A96A]/80 transition-colors mr-2">Edit</button>
                 </div>
               ))}
               {projects.length === 0 && <p className="text-xs text-[#555]">No projects yet.</p>}

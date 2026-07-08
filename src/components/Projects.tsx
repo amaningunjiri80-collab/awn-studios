@@ -15,9 +15,9 @@ export default function Projects() {
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
-          setProjects(data.filter((p: { featured?: boolean }) => p.featured).map((p: { hero_image?: string; heroImage?: string }) => ({
-            ...p, heroImage: p.hero_image || p.heroImage || "/images/placeholder.svg",
-          })));
+          setProjects(data.filter((p: { featured?: boolean }) => p.featured).map((p: Record<string, unknown>) => ({
+            ...p, heroImage: (p.hero_image as string) || (p.heroImage as string) || "/images/placeholder.svg",
+          })) as typeof projects);
         }
       })
       .catch(() => {});
@@ -36,7 +36,7 @@ export default function Projects() {
         </AnimatedSection>
 
         <div className="grid md:grid-cols-2 gap-6 md:gap-8">
-          {featured.map((project, index) => (
+          {projects.map((project, index) => (
             <AnimatedSection
               key={project.slug}
               delay={index * 0.1}

@@ -14,10 +14,10 @@ export default function ProjectsPage() {
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
-          setProjects(data.map((p: { hero_image?: string; heroImage?: string }) => ({
+          setProjects(data.map((p: Record<string, unknown>) => ({
             ...p,
-            heroImage: p.hero_image || p.heroImage || "/images/placeholder.svg",
-          })));
+            heroImage: (p.hero_image as string) || (p.heroImage as string) || "/images/placeholder.svg",
+          })) as typeof projectsData);
         }
       })
       .catch(() => {});

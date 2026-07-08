@@ -11,18 +11,23 @@ interface LightboxImage {
 }
 
 interface LightboxProps {
-  images: LightboxImage[];
+  images: LightboxImage[] | string[];
   currentIndex: number;
   onClose: () => void;
   onNavigate: (index: number) => void;
 }
 
 export default function Lightbox({
-  images,
+  images: rawImages,
   currentIndex,
   onClose,
   onNavigate,
 }: LightboxProps) {
+  const images: LightboxImage[] = rawImages.map((item) =>
+    typeof item === "string"
+      ? { url: item, title: "Image", category: "", description: "" }
+      : item
+  );
   const current = images[currentIndex];
 
   const handleKeyDown = useCallback(

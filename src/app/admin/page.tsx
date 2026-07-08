@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
-type Tab = "Dashboard" | "Portfolio" | "Projects" | "Services" | "Testimonials" | "Bookings" | "Contacts" | "Settings";
+type Tab = "Dashboard" | "Portfolio" | "Projects" | "Services" | "Testimonials" | "Bookings" | "Contacts" | "Settings" | "Media";
 
 const CATEGORIES = [
   "Sports", "Music", "Fashion", "Events", "Branding",
@@ -78,6 +78,43 @@ export default function AdminPage() {
   const [projImgUploading, setProjImgUploading] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [uploadStatuses, setUploadStatuses] = useState<string[]>([]);
+  const [projCreateHeroFile, setProjCreateHeroFile] = useState<File | null>(null);
+  const [projCreateGalleryFiles, setProjCreateGalleryFiles] = useState<File[]>([]);
+  const [projCreateGalleryPreviews, setProjCreateGalleryPreviews] = useState<string[]>([]);
+  const [projCreateProgress, setProjCreateProgress] = useState<string[]>([]);
+  const [heroImages, setHeroImages] = useState<string[]>([]);
+  const [mediaImages, setMediaImages] = useState<{ url: string; label: string; sourceType: string; sourceId?: string; sourceProject?: string; sourceField?: string; category?: string }[]>([]);
+  const [mediaFilter, setMediaFilter] = useState("");
+
+  const loadMediaImages = async () => {
+    const [portData, projData] = await Promise.all([
+      api("/api/portfolio").catch(() => []),
+      api("/api/projects").catch(() => []),
+    ]);
+    const images: typeof mediaImages = [];
+    if (Array.isArray(portData)) {
+      for (const item of portData) {
+        const url = (item as { url?: string }).url;
+        if (url && !url.includes("placeholder")) {
+          images.push({ url, label: (item as { title?: string }).title || "Portfolio", sourceType: "portfolio", sourceId: (item as { id?: string }).id, category: (item as { category?: string }).category });
+        }
+      }
+    }
+    if (Array.isArray(projData)) {
+      for (const p of projData) {
+        const project = p as { id?: string; title?: string; hero_image?: string; gallery?: string[]; category?: string };
+        if (project.hero_image && !project.hero_image.includes("placeholder")) {
+          images.push({ url: project.hero_image, label: `${project.title} (Hero)`, sourceType: "project", sourceId: project.id, sourceProject: project.id, sourceField: "hero", category: project.category });
+        }
+        for (const url of (project.gallery || [])) {
+          if (url && !url.includes("placeholder")) {
+            images.push({ url, label: project.title || "Project Image", sourceType: "project", sourceId: project.id, sourceProject: project.id, sourceField: "gallery", category: project.category });
+          }
+        }
+      }
+    }
+    setMediaImages(images);
+  };
   const [uploadCategory, setUploadCategory] = useState("Sports");
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadAlt, setUploadAlt] = useState("");
@@ -122,6 +159,7 @@ export default function AdminPage() {
         setTestimonials(Array.isArray(t) ? t : []);
         setDbStatus(Array.isArray(p) ? "connected" : "no_data");
         if (settings?.profile_photo) setProfilePhotoUrl(settings.profile_photo);
+        if (settings?.hero_images) setHeroImages(settings.hero_images);
       } catch {
         setDbStatus("disconnected");
       }
@@ -135,6 +173,9 @@ export default function AdminPage() {
     }
     if (activeTab === "Contacts") {
       api("/api/contact").catch(() => {}).then((d) => { if (Array.isArray(d)) setContacts(d); });
+    }
+    if (activeTab === "Media") {
+      loadMediaImages();
     }
   }, [activeTab]);
 
@@ -219,11 +260,46 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hero_images: [] }),
       });
+      setHeroImages([]);
       setHeroFile(null);
       showMsg("Hero images reset");
     } catch {
       showMsg("Failed to reset hero images", "error");
     }
+  };
+
+  const moveHero = async (index: number, direction: -1 | 1) => {
+    const updated = [...heroImages];
+    const swap = index + direction;
+    if (swap < 0 || swap >= updated.length) return;
+    [updated[index], updated[swap]] = [updated[swap], updated[index]];
+    try {
+      await fetch("/api/site-settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hero_images: updated }) });
+      setHeroImages(updated);
+    } catch { showMsg("Failed to reorder", "error"); }
+  };
+
+  const removeHero = async (index: number) => {
+    const updated = heroImages.filter((_, i) => i !== index);
+    try {
+      await fetch("/api/site-settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hero_images: updated }) });
+      setHeroImages(updated);
+      showMsg("Hero image removed");
+    } catch { showMsg("Failed to remove", "error"); }
+  };
+
+  const addHeroUpload = async () => {
+    if (!heroFile) return;
+    try {
+      const fd = new FormData(); fd.append("file", heroFile); fd.append("type", "hero");
+      const res = await fetch("/api/upload-site-image", { method: "POST", body: fd });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      const updated = [...heroImages, json.url];
+      setHeroImages(updated);
+      setHeroFile(null);
+      showMsg("Hero image added");
+    } catch (err: unknown) { showMsg(err instanceof Error ? err.message : "Upload failed", "error"); }
   };
 
   // Portfolio CRUD
@@ -249,16 +325,40 @@ export default function AdminPage() {
   // Projects CRUD
   const addProject = async (e: React.FormEvent) => {
     e.preventDefault();
+    setProjCreateProgress([]);
     try {
+      const galleryUrls: string[] = [];
+      let heroUrl = projForm.hero_image || "";
+
+      const uploadFile = async (file: File, label: string): Promise<string> => {
+        setProjCreateProgress((p) => [...p, `Uploading ${label}...`]);
+        const fd = new FormData(); fd.append("file", file); fd.append("category", "projects"); fd.append("title", projForm.title); fd.append("alt_text", ""); fd.append("location", ""); fd.append("year", ""); fd.append("description", ""); fd.append("featured", "false");
+        const r = await fetch("/api/upload", { method: "POST", body: fd }); const j = await r.json();
+        if (j.error) throw new Error(`Failed to upload ${label}: ${j.error}`);
+        setProjCreateProgress((p) => [...p, `Uploaded ${label}`]);
+        return j.url;
+      };
+
+      if (projCreateHeroFile) heroUrl = await uploadFile(projCreateHeroFile, "hero image");
+      for (let i = 0; i < projCreateGalleryFiles.length; i++) {
+        const url = await uploadFile(projCreateGalleryFiles[i], `gallery image ${i + 1}`);
+        galleryUrls.push(url);
+      }
+
+      const allGallery = heroUrl ? [heroUrl, ...galleryUrls] : galleryUrls;
       await api("/api/projects", {
         method: "POST",
-        body: JSON.stringify({ ...projForm, published: true, tags: projForm.tags.split(",").map((t) => t.trim()).filter(Boolean), gallery: [projForm.hero_image] }),
+        body: JSON.stringify({ ...projForm, hero_image: heroUrl, published: true, tags: projForm.tags.split(",").map((t) => t.trim()).filter(Boolean), gallery: allGallery }),
       });
-      showMsg("Project added");
+      showMsg("Project created with images");
       setProjForm({ slug: "", title: "", category: "", client: "", location: "", year: "", hero_image: "", description: "", tags: "", featured: false });
+      setProjCreateHeroFile(null);
+      setProjCreateGalleryFiles([]);
+      setProjCreateGalleryPreviews([]);
+      setProjCreateProgress([]);
       const updated = await api("/api/projects");
       setProjects(Array.isArray(updated) ? updated : []);
-    } catch (err: unknown) { showMsg(err instanceof Error ? err.message : "Error", "error"); }
+    } catch (err: unknown) { showMsg(err instanceof Error ? err.message : "Error", "error"); setProjCreateProgress([]); }
   };
 
   const handleProjectImageUpload = async (e: React.FormEvent) => {
@@ -334,7 +434,7 @@ export default function AdminPage() {
 
   const inpCls = "w-full px-3 py-2.5 bg-[#0A0A0A] border border-white/10 text-white text-sm focus:outline-none focus:border-white/30 transition-colors rounded-none";
   const lblCls = "block text-xs tracking-[0.15em] uppercase text-[#A0A0A0] mb-1.5";
-  const tabs: Tab[] = ["Dashboard", "Portfolio", "Projects", "Services", "Testimonials", "Bookings", "Contacts", "Settings"];
+  const tabs: Tab[] = ["Dashboard", "Portfolio", "Projects", "Services", "Testimonials", "Bookings", "Contacts", "Media", "Settings"];
 
   if (auth.loading) return <div className="pt-24 pb-16 px-4 md:px-8 min-h-screen flex items-center justify-center"><p className="text-sm text-[#555]">Loading...</p></div>;
 
@@ -543,7 +643,7 @@ export default function AdminPage() {
         {activeTab === "Projects" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <h2 className="text-base md:text-lg font-light text-white mb-4">Add Project</h2>
-            <form onSubmit={addProject} className="space-y-3 mb-8 max-w-lg">
+            <form onSubmit={addProject} className="space-y-3 mb-8 max-w-xl">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={lblCls}>Title</label>
@@ -572,22 +672,62 @@ export default function AdminPage() {
                 </div>
               </div>
               <div>
-                <label className={lblCls}>Hero Image URL</label>
-                <input type="text" value={projForm.hero_image} onChange={(e) => setProjForm({ ...projForm, hero_image: e.target.value })} className={inpCls} />
-              </div>
-              <div>
                 <label className={lblCls}>Description</label>
-                <textarea rows={3} value={projForm.description} onChange={(e) => setProjForm({ ...projForm, description: e.target.value })} className={inpCls} />
+                <textarea rows={2} value={projForm.description} onChange={(e) => setProjForm({ ...projForm, description: e.target.value })} className={inpCls} />
               </div>
               <div>
                 <label className={lblCls}>Tags (comma separated)</label>
                 <input type="text" value={projForm.tags} onChange={(e) => setProjForm({ ...projForm, tags: e.target.value })} className={inpCls} />
               </div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={projForm.featured} onChange={(e) => setProjForm({ ...projForm, featured: e.target.checked })} className="accent-[#C8A96A]" />
-                <span className="text-xs text-[#A0A0A0]">Featured</span>
-              </label>
-              <button type="submit" className="px-5 py-2.5 text-xs tracking-[0.2em] uppercase bg-white text-black hover:bg-white/90 transition-all">Save Project</button>
+
+              <div className="border border-white/5 p-4">
+                <label className={lblCls}>Hero Image</label>
+                <input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={(e) => setProjCreateHeroFile(e.target.files?.[0] || null)}
+                  className={`${inpCls} file:mr-3 file:py-1 file:px-3 file:border-0 file:text-xs file:tracking-wider file:uppercase file:bg-white/10 file:text-white hover:file:bg-white/20`} />
+              </div>
+
+              <div className="border border-white/5 p-4">
+                <label className={lblCls}>Gallery Images (select multiple)</label>
+                <input type="file" accept=".jpg,.jpeg,.png,.webp" multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setProjCreateGalleryFiles(files);
+                    setProjCreateGalleryPreviews(files.map((f) => URL.createObjectURL(f)));
+                  }}
+                  className={`${inpCls} file:mr-3 file:py-1 file:px-3 file:border-0 file:text-xs file:tracking-wider file:uppercase file:bg-white/10 file:text-white hover:file:bg-white/20`} />
+                {projCreateGalleryPreviews.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2 mt-3">
+                    {projCreateGalleryPreviews.map((url, i) => (
+                      <div key={i} className="relative aspect-square bg-[#0A0A0A] bg-cover bg-center rounded overflow-hidden" style={{ backgroundImage: `url(${url})` }}>
+                        <button type="button" onClick={() => {
+                          const f = [...projCreateGalleryFiles]; f.splice(i, 1); setProjCreateGalleryFiles(f);
+                          const p = [...projCreateGalleryPreviews]; URL.revokeObjectURL(p[i]); p.splice(i, 1); setProjCreateGalleryPreviews(p);
+                        }} className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-red-500/80 text-white text-[10px] rounded">&times;</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={projForm.featured} onChange={(e) => setProjForm({ ...projForm, featured: e.target.checked })} className="accent-[#C8A96A]" />
+                  <span className="text-xs text-[#A0A0A0]">Featured</span>
+                </label>
+              </div>
+
+              {projCreateProgress.length > 0 && (
+                <div className="space-y-1">
+                  {projCreateProgress.map((s, i) => (
+                    <p key={i} className="text-[10px] text-[#A0A0A0]">{s}</p>
+                  ))}
+                </div>
+              )}
+
+              <button type="submit" disabled={projCreateProgress.some((s) => s.includes("Uploading"))}
+                className="px-5 py-2.5 text-xs tracking-[0.2em] uppercase bg-white text-black hover:bg-white/90 transition-all disabled:opacity-50">
+                {projCreateProgress.some((s) => s.includes("Uploading")) ? "Uploading..." : "Create Project"}
+              </button>
             </form>
 
             <div className="p-4 bg-[#111] border border-white/5 mb-8 max-w-xl">
@@ -750,30 +890,30 @@ export default function AdminPage() {
                         )}
 
                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3">
-                          {(p.gallery || []).filter((u) => !u.includes("placeholder")).map((url, i) => (
+                          {(p.gallery || []).filter((u) => !u.includes("placeholder")).map((url, i) => {
+                            const gal = (p.gallery || []).filter((u) => !u.includes("placeholder"));
+                            return (
                             <div key={i} className="relative group bg-[#0A0A0A] bg-cover bg-center rounded overflow-hidden" style={{ aspectRatio: "4/3", backgroundImage: `url(${url})` }}>
                               <div className="absolute inset-x-0 bottom-0 flex justify-center gap-1 pb-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button onClick={async () => {
-                                  const gal = [...((p.gallery || []).filter((u) => !u.includes("placeholder")))];
                                   if (i > 0) { [gal[i - 1], gal[i]] = [gal[i], gal[i - 1]]; }
                                   await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, gallery: gal }) });
                                   const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []);
                                 }} disabled={i === 0} className="w-5 h-5 flex items-center justify-center bg-black/60 text-white rounded text-[10px] disabled:opacity-30 hover:bg-black/80">&#9650;</button>
                                 <button onClick={async () => {
-                                  const gal = [...((p.gallery || []).filter((u) => !u.includes("placeholder")))];
                                   if (i < gal.length - 1) { [gal[i], gal[i + 1]] = [gal[i + 1], gal[i]]; }
                                   await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, gallery: gal }) });
                                   const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []);
-                                }} disabled={i === gal.filter(u => !u.includes("placeholder")).length - 1} className="w-5 h-5 flex items-center justify-center bg-black/60 text-white rounded text-[10px] disabled:opacity-30 hover:bg-black/80">&#9660;</button>
+                                }} disabled={i === gal.length - 1} className="w-5 h-5 flex items-center justify-center bg-black/60 text-white rounded text-[10px] disabled:opacity-30 hover:bg-black/80">&#9660;</button>
                                 <button onClick={async () => {
-                                  const gal = [...((p.gallery || []).filter((u) => !u.includes("placeholder")))];
                                   gal.splice(i, 1);
                                   await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, gallery: gal }) });
                                   showMsg("Image removed"); const u = await api("/api/projects"); setProjects(Array.isArray(u) ? u : []);
                                 }} className="w-5 h-5 flex items-center justify-center bg-red-500/80 text-white rounded text-[10px] hover:bg-red-500">&times;</button>
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
@@ -927,6 +1067,64 @@ export default function AdminPage() {
           </motion.div>
         )}
 
+        {/* MEDIA */}
+        {activeTab === "Media" && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <h2 className="text-base md:text-lg font-light text-white mb-4">Media Library</h2>
+            <div className="flex flex-wrap gap-3 mb-6">
+              <select onChange={(e) => setMediaFilter(e.target.value)} className="px-3 py-2 bg-[#0A0A0A] border border-white/10 text-white text-xs rounded-none">
+                <option value="">All Images</option>
+                <optgroup label="Projects">
+                  {projects.map((p) => <option key={p.id as string} value={`project:${p.id}`}>{p.title as string}</option>)}
+                </optgroup>
+                <optgroup label="Portfolio">
+                  {[...new Set(portfolioItems.map((item) => (item as { category?: string }).category || ""))].filter(Boolean).map((c) => (
+                    <option key={c} value={`portfolio-cat:${c}`}>Portfolio: {c}</option>
+                  ))}
+                </optgroup>
+                <option value="unassigned">Unassigned</option>
+              </select>
+              <span className="text-[10px] text-[#555] self-center">{mediaImages.length} images</span>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+              {mediaImages.filter((img) => {
+                if (!mediaFilter) return true;
+                if (mediaFilter.startsWith("project:")) return img.sourceProject === mediaFilter.replace("project:", "");
+                if (mediaFilter.startsWith("portfolio-cat:")) return img.sourceType === "portfolio" && img.category === mediaFilter.replace("portfolio-cat:", "");
+                if (mediaFilter === "unassigned") return img.sourceType === "unassigned";
+                return true;
+              }).map((img, i) => (
+                <div key={i} className="group relative bg-[#111] border border-white/5 overflow-hidden rounded-sm">
+                  <div className="aspect-square bg-cover bg-center" style={{ backgroundImage: `url(${img.url})` }} />
+                  <div className="p-1.5">
+                    <p className="text-[10px] text-white truncate">{img.label}</p>
+                    {img.sourceType === "project" && <p className="text-[8px] text-[#C8A96A] truncate">Project</p>}
+                    {img.sourceType === "portfolio" && <p className="text-[8px] text-[#555] truncate">Portfolio: {img.category}</p>}
+                    {img.sourceType === "unassigned" && <p className="text-[8px] text-amber-400/60 truncate">Unassigned</p>}
+                  </div>
+                  <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                    <button onClick={async () => {
+                      try {
+                        if (img.sourceType === "portfolio") {
+                          await api("/api/portfolio", { method: "DELETE", body: JSON.stringify({ id: img.sourceId }) });
+                        } else if (img.sourceType === "project" && img.sourceField === "gallery") {
+                          const p = projects.find((pr) => pr.id === img.sourceProject);
+                          if (p) { const gal = [...((p as { gallery?: string[] }).gallery || []).filter((u) => u !== img.url)]; await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: img.sourceProject, gallery: gal }) }); }
+                        } else if (img.sourceType === "project" && img.sourceField === "hero") {
+                          await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: img.sourceProject, hero_image: "" }) });
+                        }
+                        showMsg("Image removed");
+                        loadMediaImages();
+                      } catch { showMsg("Failed to delete", "error"); }
+                    }} className="w-5 h-5 flex items-center justify-center bg-red-500/80 text-white text-[10px] rounded hover:bg-red-500">&times;</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {mediaImages.length === 0 && <p className="text-xs text-[#555]">No images found.</p>}
+          </motion.div>
+        )}
+
         {/* SETTINGS */}
         {activeTab === "Settings" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -940,29 +1138,55 @@ export default function AdminPage() {
                     <label className={lblCls}>Profile Photo (shows on homepage & about page)</label>
                     <input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={(e) => setSiteImageFile(e.target.files?.[0] || null)}
                       className={`${inpCls} file:mr-3 file:py-1 file:px-3 file:border-0 file:text-xs file:tracking-wider file:uppercase file:bg-white/10 file:text-white hover:file:bg-white/20`} />
+                    {profilePhotoUrl && <span className="text-emerald-400 text-[10px] mt-1 block">Photo set</span>}
                   </div>
-                  <div>
-                    <label className={lblCls}>Hero Slideshow (one image, set multiple times)</label>
-                    <input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={(e) => setHeroFile(e.target.files?.[0] || null)}
-                      className={`${inpCls} file:mr-3 file:py-1 file:px-3 file:border-0 file:text-xs file:tracking-wider file:uppercase file:bg-white/10 file:text-white hover:file:bg-white/20`} />
-                  </div>
-                  <div className="flex gap-2">
-                    <button type="submit" disabled={siteImageUploading || (!siteImageFile && !heroFile)}
-                      className="px-4 py-2 text-xs tracking-[0.2em] uppercase bg-[#C8A96A] text-black hover:bg-[#C8A96A]/90 transition-all disabled:opacity-50">
-                      {siteImageUploading ? "Uploading..." : "Update Images"}
-                    </button>
-                    {profilePhotoUrl && (
-                      <span className="text-[10px] text-emerald-400 self-center">Profile photo set</span>
+
+                  <div className="border-t border-white/5 pt-3">
+                    <label className={lblCls}>Hero Slideshow</label>
+                    {heroImages.length > 0 && (
+                      <div className="grid grid-cols-4 gap-2 mb-3">
+                        {heroImages.map((url, i) => (
+                          <div key={i} className="relative group aspect-video bg-[#0A0A0A] bg-cover bg-center rounded overflow-hidden" style={{ backgroundImage: `url(${url})` }}>
+                            <div className="absolute inset-x-0 bottom-0 flex justify-center gap-1 pb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button type="button" onClick={() => moveHero(i, -1)} disabled={i === 0} className="w-4 h-4 flex items-center justify-center bg-black/60 text-white rounded text-[8px] disabled:opacity-30">&#9650;</button>
+                              <button type="button" onClick={() => moveHero(i, 1)} disabled={i === heroImages.length - 1} className="w-4 h-4 flex items-center justify-center bg-black/60 text-white rounded text-[8px] disabled:opacity-30">&#9660;</button>
+                              <button type="button" onClick={() => removeHero(i)} className="w-4 h-4 flex items-center justify-center bg-red-500/80 text-white rounded text-[8px]">&times;</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={(e) => setHeroFile(e.target.files?.[0] || null)}
+                        className={`flex-1 ${inpCls} file:mr-3 file:py-1 file:px-3 file:border-0 file:text-xs file:tracking-wider file:uppercase file:bg-white/10 file:text-white hover:file:bg-white/20`} />
+                      <button type="button" onClick={addHeroUpload}
+                        disabled={!heroFile}
+                        className="px-3 py-2 text-[10px] tracking-[0.2em] uppercase bg-[#C8A96A] text-black hover:bg-[#C8A96A]/90 transition-all disabled:opacity-50 whitespace-nowrap">Add</button>
+                    </div>
+
+                    {mediaImages.length > 0 && (
+                      <div className="mt-2">
+                        <label className="text-[10px] text-[#555] block mb-1">Or select from Media Library:</label>
+                        <select onChange={async (e) => {
+                          if (!e.target.value) return;
+                          const updated = [...heroImages, e.target.value];
+                          await fetch("/api/site-settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hero_images: updated }) });
+                          setHeroImages(updated); showMsg("Hero image added");
+                          const s = await api("/api/site-settings"); if (s?.hero_images) setHeroImages(s.hero_images);
+                        }} className={inpCls}>
+                          <option value="">Select an image...</option>
+                          {mediaImages.map((img, i) => <option key={i} value={img.url}>{img.label}</option>)}
+                        </select>
+                      </div>
                     )}
                   </div>
-                  {heroFile && (
-                    <div className="flex gap-2">
-                      <button type="button" onClick={handleResetHero}
-                        className="px-3 py-1 text-[10px] tracking-[0.2em] uppercase bg-red-500/20 text-red-300 hover:bg-red-500/30 transition-all">
-                        Reset Hero Images
-                      </button>
-                    </div>
-                  )}
+
+                  <div className="flex gap-2 pt-2">
+                    <button type="button" onClick={handleResetHero}
+                      className="px-3 py-1 text-[10px] tracking-[0.2em] uppercase bg-red-500/20 text-red-300 hover:bg-red-500/30 transition-all">
+                      Reset All Hero Images
+                    </button>
+                  </div>
                 </form>
               </div>
 

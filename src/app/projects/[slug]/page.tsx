@@ -147,6 +147,14 @@ function ProjectPageInner({
               </span>
               <p className="text-white text-sm mt-1">{project.year}</p>
             </div>
+            {(project as { project_date?: string }).project_date && (
+              <div>
+                <span className="text-[10px] tracking-[0.2em] uppercase text-[#555]">
+                  Shot On
+                </span>
+                <p className="text-white text-sm mt-1">{new Date((project as { project_date: string }).project_date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+              </div>
+            )}
             <div>
               <span className="text-[10px] tracking-[0.2em] uppercase text-[#555]">
                 Tags

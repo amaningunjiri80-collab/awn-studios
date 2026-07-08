@@ -67,6 +67,7 @@ export default function Projects() {
                       <span>{project.client}</span>
                       <span>{project.location}</span>
                       <span>{project.year}</span>
+                      {project.project_date && <span>Shot on {new Date(project.project_date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</span>}
                     </div>
                     <span className="inline-block mt-3 text-[10px] tracking-wider uppercase text-[#C8A96A] opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                       View Gallery &rarr;

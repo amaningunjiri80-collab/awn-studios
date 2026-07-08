@@ -5,6 +5,7 @@ export async function GET() {
   const { data, error } = await getSupabaseAdmin()
     .from("projects")
     .select("*")
+    .order("project_date", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

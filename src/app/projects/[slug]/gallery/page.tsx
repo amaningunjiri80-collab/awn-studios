@@ -18,7 +18,7 @@ function GalleryInner({ params }: { params: Promise<{ slug: string }> }) {
   const searchParams = useSearchParams();
   const isPreview = searchParams.get("preview") === "true";
   const [project, setProject] = useState<{
-    title: string; slug: string; category: string; gallery: string[]; published?: boolean;
+    title: string; slug: string; category: string; gallery: string[]; published?: boolean; project_date?: string;
   } | null>(null);
   const [images, setImages] = useState<string[]>([]);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -60,7 +60,7 @@ function GalleryInner({ params }: { params: Promise<{ slug: string }> }) {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             <span className="text-xs tracking-[0.3em] uppercase text-[#A0A0A0] block mb-2">{project.category}</span>
             <h1 className="text-3xl md:text-5xl font-light text-white">{project.title} Gallery</h1>
-            <p className="text-sm text-[#A0A0A0] mt-2">{images.length} images</p>
+            <p className="text-sm text-[#A0A0A0] mt-2">{images.length} images{project.project_date ? ` \u00B7 Shot on ${new Date(project.project_date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}` : ""}</p>
           </motion.div>
         </div>
       </div>

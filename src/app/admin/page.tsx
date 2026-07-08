@@ -69,7 +69,7 @@ export default function AdminPage() {
 
   // Form states
   const [portForm, setPortForm] = useState({ url: "", title: "", category: "", location: "", year: "", description: "", alt_text: "", featured: false });
-  const [projForm, setProjForm] = useState({ slug: "", title: "", category: "", client: "", location: "", year: "", hero_image: "", description: "", tags: "", featured: false });
+  const [projForm, setProjForm] = useState({ slug: "", title: "", category: "", client: "", location: "", year: "", hero_image: "", description: "", tags: "", featured: false, project_date: new Date().toISOString().slice(0, 10) });
   const [testForm, setTestForm] = useState({ name: "", business: "", quote: "", image: "" });
   const [uploadFiles, setUploadFiles] = useState<FileList | null>(null);
   const [projImgFiles, setProjImgFiles] = useState<FileList | null>(null);
@@ -351,7 +351,7 @@ export default function AdminPage() {
         body: JSON.stringify({ ...projForm, hero_image: heroUrl, published: true, tags: projForm.tags.split(",").map((t) => t.trim()).filter(Boolean), gallery: allGallery }),
       });
       showMsg("Project created with images");
-      setProjForm({ slug: "", title: "", category: "", client: "", location: "", year: "", hero_image: "", description: "", tags: "", featured: false });
+      setProjForm({ slug: "", title: "", category: "", client: "", location: "", year: "", hero_image: "", description: "", tags: "", featured: false, project_date: new Date().toISOString().slice(0, 10) });
       setProjCreateHeroFile(null);
       setProjCreateGalleryFiles([]);
       setProjCreateGalleryPreviews([]);
@@ -670,6 +670,10 @@ export default function AdminPage() {
                   <label className={lblCls}>Year</label>
                   <input type="text" value={projForm.year} onChange={(e) => setProjForm({ ...projForm, year: e.target.value })} className={inpCls} />
                 </div>
+                <div>
+                  <label className={lblCls}>Project Date</label>
+                  <input type="date" value={projForm.project_date} onChange={(e) => setProjForm({ ...projForm, project_date: e.target.value })} className={inpCls} />
+                </div>
               </div>
               <div>
                 <label className={lblCls}>Description</label>
@@ -737,14 +741,14 @@ export default function AdminPage() {
                   <label className={lblCls}>Select Project</label>
                   <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} className={inpCls}>
                     <option value="">Choose a project</option>
-                    {projects.map((p) => <option key={p.id as string} value={p.id as string}>{(p as { published?: boolean }).published === false ? "[Draft] " : ""}{p.title as string}</option>)}
+                    {[...projects].sort((a, b) => ((b as { project_date?: string }).project_date || "").localeCompare((a as { project_date?: string }).project_date || "")).map((p) => <option key={p.id as string} value={p.id as string}>{(p as { published?: boolean }).published === false ? "[Draft] " : ""}{p.title as string}</option>)}
                   </select>
                 </div>
 
                 {(() => {
                   const project = projects.find((p) => p.id === selectedProjectId);
                   if (!project) return <p className="text-xs text-[#555]">Select a project above</p>;
-                  const p = project as { hero_image?: string; gallery?: string[]; title?: string; slug?: string; category?: string; client?: string; location?: string; year?: string; description?: string; tags?: string[]; featured?: boolean; published?: boolean; id?: string };
+                  const p = project as { hero_image?: string; gallery?: string[]; title?: string; slug?: string; category?: string; client?: string; location?: string; year?: string; project_date?: string; description?: string; tags?: string[]; featured?: boolean; published?: boolean; id?: string };
 
                   const saveField = async (field: string, value: unknown) => {
                     await api("/api/projects", { method: "PUT", body: JSON.stringify({ id: project.id, [field]: value }) });
@@ -790,6 +794,10 @@ export default function AdminPage() {
                         <div>
                           <label className={lblCls}>Year</label>
                           <input type="text" defaultValue={p.year} onBlur={(e) => saveField("year", e.target.value)} className={inpCls} />
+                        </div>
+                        <div>
+                          <label className={lblCls}>Project Date</label>
+                          <input type="date" defaultValue={p.project_date || ""} onBlur={(e) => saveField("project_date", e.target.value)} className={inpCls} />
                         </div>
                       </div>
                       <div>

@@ -325,40 +325,73 @@ export default function AdminPage() {
   // Projects CRUD
   const addProject = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!projForm.title.trim() || !projForm.slug.trim()) {
+      showMsg("Title and slug are required", "error"); return;
+    }
     setProjCreateProgress([]);
+    const uploadedUrls: string[] = [];
+    const uploadedPaths: string[] = [];
+
+    const uploadFile = async (file: File, label: string): Promise<{ url: string; storagePath: string }> => {
+      setProjCreateProgress((p) => [...p, `Uploading ${label}...`]);
+      const fd = new FormData(); fd.append("file", file);
+      const r = await fetch("/api/upload-storage", { method: "POST", body: fd });
+      const j = await r.json();
+      if (j.error) throw new Error(`Failed to upload ${label}: ${j.error}`);
+      setProjCreateProgress((p) => [...p, `Uploaded ${label}`]);
+      return { url: j.url, storagePath: j.storagePath };
+    };
+
+    const deleteUploaded = async () => {
+      if (uploadedPaths.length === 0) return;
+      try {
+        const { getSupabaseAdmin } = await import("@/lib/supabase");
+        const admin = getSupabaseAdmin();
+        await admin.storage.from("awn-archive").remove(uploadedPaths);
+      } catch { /* best effort cleanup */ }
+    };
+
     try {
-      const galleryUrls: string[] = [];
-      let heroUrl = projForm.hero_image || "";
-
-      const uploadFile = async (file: File, label: string): Promise<string> => {
-        setProjCreateProgress((p) => [...p, `Uploading ${label}...`]);
-        const fd = new FormData(); fd.append("file", file); fd.append("category", "projects"); fd.append("title", projForm.title); fd.append("alt_text", ""); fd.append("location", ""); fd.append("year", ""); fd.append("description", ""); fd.append("featured", "false");
-        const r = await fetch("/api/upload", { method: "POST", body: fd }); const j = await r.json();
-        if (j.error) throw new Error(`Failed to upload ${label}: ${j.error}`);
-        setProjCreateProgress((p) => [...p, `Uploaded ${label}`]);
-        return j.url;
-      };
-
-      if (projCreateHeroFile) heroUrl = await uploadFile(projCreateHeroFile, "hero image");
+      if (projCreateHeroFile) {
+        const r = await uploadFile(projCreateHeroFile, "hero image");
+        uploadedUrls.push(r.url);
+        uploadedPaths.push(r.storagePath);
+      }
       for (let i = 0; i < projCreateGalleryFiles.length; i++) {
-        const url = await uploadFile(projCreateGalleryFiles[i], `gallery image ${i + 1}`);
-        galleryUrls.push(url);
+        const r = await uploadFile(projCreateGalleryFiles[i], `gallery image ${i + 1}`);
+        uploadedUrls.push(r.url);
+        uploadedPaths.push(r.storagePath);
       }
 
-      const allGallery = heroUrl ? [heroUrl, ...galleryUrls] : galleryUrls;
-      await api("/api/projects", {
-        method: "POST",
-        body: JSON.stringify({ ...projForm, hero_image: heroUrl, published: true, tags: projForm.tags.split(",").map((t) => t.trim()).filter(Boolean), gallery: allGallery }),
-      });
-      showMsg("Project created with images");
+      setProjCreateProgress((p) => [...p, "Creating project record..."]);
+      const body: Record<string, unknown> = {
+        slug: projForm.slug, title: projForm.title, category: projForm.category,
+        client: projForm.client, location: projForm.location, year: projForm.year,
+        project_date: projForm.project_date, description: projForm.description,
+        tags: projForm.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        featured: projForm.featured, published: true,
+      };
+      if (uploadedUrls.length > 0) {
+        body.hero_image = uploadedUrls[0];
+        body.gallery = uploadedUrls;
+      }
+      const created = await api("/api/projects", { method: "POST", body: JSON.stringify(body) });
+      if (!created || !created.id) throw new Error("Project creation failed — database did not return an ID");
+
+      setProjCreateProgress((p) => [...p, "Project saved!"]);
+      showMsg(`Project "${projForm.title}" created successfully with images`, "success");
       setProjForm({ slug: "", title: "", category: "", client: "", location: "", year: "", hero_image: "", description: "", tags: "", featured: false, project_date: new Date().toISOString().slice(0, 10) });
       setProjCreateHeroFile(null);
       setProjCreateGalleryFiles([]);
       setProjCreateGalleryPreviews([]);
-      setProjCreateProgress([]);
+      setTimeout(() => setProjCreateProgress([]), 3000);
       const updated = await api("/api/projects");
       setProjects(Array.isArray(updated) ? updated : []);
-    } catch (err: unknown) { showMsg(err instanceof Error ? err.message : "Error", "error"); setProjCreateProgress([]); }
+    } catch (err: unknown) {
+      await deleteUploaded();
+      showMsg(err instanceof Error ? err.message : "Error creating project", "error");
+      setProjCreateProgress([]);
+    }
   };
 
   const handleProjectImageUpload = async (e: React.FormEvent) => {

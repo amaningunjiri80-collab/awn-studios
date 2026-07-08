@@ -1,15 +1,34 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import AnimatedSection from "./AnimatedSection";
 import Link from "next/link";
-import Script from "next/script";
+import Lightbox from "./Lightbox";
+
+interface PortfolioItem {
+  id: number;
+  url: string;
+  alt_text?: string;
+  category?: string;
+}
 
 export default function InstagramFeed() {
+  const [images, setImages] = useState<PortfolioItem[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/portfolio")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setImages(data.slice(0, 8));
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <section className="relative py-24 md:py-32 px-6 md:px-12">
       <div className="max-w-[1440px] mx-auto">
-        <Script src="https://cdn.lightwidget.com/widgets/lightwidget.js" strategy="afterInteractive" />
         <AnimatedSection className="mb-10 flex items-center justify-between">
           <div>
             <span className="text-xs tracking-[0.3em] uppercase text-[#C8A96A] block mb-4">
@@ -29,15 +48,25 @@ export default function InstagramFeed() {
           </Link>
         </AnimatedSection>
 
-        <div className="w-full overflow-hidden rounded">
-          <iframe
-            src="//lightwidget.com/widgets/41cf927b08e755dd963b0dddbd541f71.html"
-            scrolling="no"
-            allowTransparency
-            className="lightwidget-widget"
-            style={{ width: "100%", border: 0, overflow: "hidden" }}
-            title="Instagram Feed"
-          />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
+          {images.map((img, i) => (
+            <button
+              key={img.id}
+              onClick={() => setLightboxIndex(i)}
+              className="aspect-square bg-[#111] overflow-hidden group relative cursor-pointer"
+            >
+              <div
+                className="w-full h-full bg-cover bg-center group-hover:scale-105 transition-transform duration-500"
+                style={{ backgroundImage: `url(${img.url})` }}
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300" />
+              {img.category && (
+                <span className="absolute bottom-2 left-2 text-[10px] tracking-wider uppercase text-white/0 group-hover:text-white/70 transition-all duration-300">
+                  {img.category}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
 
         <div className="mt-8 text-center md:hidden">
@@ -51,6 +80,15 @@ export default function InstagramFeed() {
           </Link>
         </div>
       </div>
+
+      {lightboxIndex !== null && (
+        <Lightbox
+          images={images.map((i) => i.url)}
+          currentIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={setLightboxIndex}
+        />
+      )}
     </section>
   );
 }

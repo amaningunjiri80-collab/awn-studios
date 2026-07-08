@@ -67,7 +67,7 @@ export default function PortfolioGrid() {
               }`}
               onClick={() => openLightbox(index)}
             >
-              <div className="image-zoom aspect-[3/4] sm:aspect-auto sm:h-[400px] md:h-[500px] lg:h-[600px]">
+              <div className="w-full h-64 sm:h-72 md:h-80 lg:h-96 bg-[#0a0a0a]">
                 <div
                   className="w-full h-full bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
                   style={{ backgroundImage: `url(${item.image})` }}

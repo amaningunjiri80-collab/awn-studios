@@ -5,6 +5,17 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const CONTACT_EMAIL = process.env.CONTACT_EMAIL || "hello@awnarchive.com";
 const FROM_EMAIL = "onboarding@resend.dev";
 
+export async function GET() {
+  const supabaseAdmin = getSupabaseAdmin();
+  const { data, error } = await supabaseAdmin
+    .from("bookings")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
+}
+
 export async function POST(req: Request) {
   const body = await req.json();
   const { name, email, phone, shoot_type, date, location, message } = body;

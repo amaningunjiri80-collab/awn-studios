@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import AnimatedSection from "./AnimatedSection";
 import projectsData from "@/data/projects.json";
 import { getCategoryColor } from "@/lib/utils";

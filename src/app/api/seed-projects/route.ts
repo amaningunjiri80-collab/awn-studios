@@ -15,9 +15,11 @@ export async function POST() {
         .single();
 
       if (existing) {
+        const updates: Record<string, unknown> = {};
+        if (project.project_date) updates.project_date = project.project_date;
         const { error: updateError } = await supabaseAdmin
           .from("projects")
-          .update({ project_date: project.project_date })
+          .update(updates)
           .eq("id", existing.id);
 
         if (updateError) {
@@ -28,9 +30,10 @@ export async function POST() {
         continue;
       }
 
+      const { heroImage: _heroImage, ...cleanProject } = project;
       const { error } = await supabaseAdmin
         .from("projects")
-        .insert([{ ...project, published: true, hero_image: project.heroImage }]);
+        .insert([{ ...cleanProject, published: true, hero_image: _heroImage }]);
 
       if (error) {
         console.error(`Failed to insert ${project.slug}:`, error.message);
